@@ -16,7 +16,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //checking existing user.
-  const existedUser = User.findOne({
+  const existedUser = await User.findOne({
     $or: [{ userName }, { email }],
   });
   console.log(existedUser);
@@ -28,25 +28,26 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  //checking files and validation for cover image and avatar image.
-  req.files && console.log(req.files);
+  //Uploading in cloudinary.
+  const avatarLocalPath = req.files?.avatar?.[0].path;
+  // const coverImageLocalPath = req.files?.coverImage?.[0].path;
+  let coverImageLocalPath;
 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  console.log(avatarLocalPath);
-
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
-  console.log(coverImageLocalPath);
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required");
   }
 
-  //Uploading in cloudinary.
   //The reason for using async method was to use await here for cloudinary to upload the path to their serve.
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  console.log(avatar);
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-  console.log(coverImage);
 
   if (!avatar) {
     throw new ApiError(400, "Avatar file is required");
@@ -67,6 +68,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
+  
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering a user");
   }
